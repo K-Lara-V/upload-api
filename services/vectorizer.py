@@ -1,18 +1,25 @@
-from langchain.embeddings import OpenAIEmbeddings
+from sentence_transformers import SentenceTransformer
 import requests
-import os
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "sk-your-api-key")
 
 def generate_embeddings(docs):
     texts = [doc.page_content for doc in docs]
-    embeddings_model = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
-    vectors = embeddings_model.embed_documents(texts)
+    model = SentenceTransformer('all-MiniLM-L6-v2')  # Puedes usar otros como paraphrase-MiniLM
+    vectors = model.encode(texts).tolist()
     return {"texts": texts, "embeddings": vectors}
 
 def send_vectors_to_db(texts, embeddings):
+    ids = [f"vec_{i}" for i in range(len(texts))]  # IDs únicos
+    metadatas = [{"text": text} for text in texts]  # O cualquier metadato que desees
+
+    payload = {
+        "ids": ids,
+        "embeddings": embeddings,
+        "metadatas": metadatas
+    }
+
     response = requests.post(
         "http://vector-db-api:8001/save-vectors/",
-        json={"texts": texts, "embeddings": embeddings}
+        json=payload
     )
     return response.json()
+
